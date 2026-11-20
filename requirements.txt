@@ -1,0 +1,55 @@
+# ============================================================
+# goeye - complete requirements
+# Python 3.12 recommended
+# ============================================================
+
+# ---------- Computer vision / AI ----------
+torch                    # PyTorch (the Windows build from PyPI is CPU-only, which suits your Intel laptop)
+torchvision
+ultralytics              # YOLOv8 / YOLO11 detection, pose, and ByteTrack/BoT-SORT tracking
+opencv-python            # video capture and image processing
+numpy
+openvino                 # fast inference on Intel CPU / Iris Xe GPU
+onnx                     # model export format
+onnxruntime              # alternative inference runtime
+supervision              # zones, line-crossing, dwell time, annotations
+shapely                  # polygon math for zones (counter, shelf, exit)
+lap                      # tracker dependency
+scipy                    # used by trackers and analytics
+pillow                   # image handling for snapshots
+
+# ---------- Messaging between processes ----------
+redis                    # Redis Streams message bus
+
+# ---------- Backend API (FastAPI) ----------
+fastapi
+uvicorn[standard]        # ASGI server
+python-multipart         # form/file uploads
+websockets               # live updates to the dashboard
+
+# ---------- Database ----------
+sqlalchemy[asyncio]      # ORM (asyncio extra pulls in greenlet)
+asyncpg                  # async PostgreSQL driver
+psycopg[binary]          # sync PostgreSQL driver (for Alembic and scripts)
+alembic                  # database migrations
+
+# ---------- Config / validation ----------
+pydantic
+pydantic-settings        # load settings from a .env file
+python-dotenv
+
+# ---------- Auth / security ----------
+pyjwt                    # JWT tokens
+pwdlib[argon2]           # password hashing
+
+# ---------- Utilities ----------
+loguru                   # simpler logging
+apscheduler              # scheduled jobs (cleanup, daily reports)
+pandas                   # reports and analytics
+
+# ---------- Development / testing ----------
+pytest
+pytest-asyncio
+httpx                    # test FastAPI endpoints
+ruff                     # linting and formatting
+mypy                     # type checking
