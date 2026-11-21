@@ -1,4 +1,6 @@
-"""Password hashing and JWT helpers."""
+"""Password hashing, JWT helpers, and keeping tokens out of the logs."""
+import logging
+import re
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -7,6 +9,19 @@ from pwdlib import PasswordHash
 from backend.core.config import settings
 
 _hasher = PasswordHash.recommended()
+
+_TOKEN_IN_URL = re.compile(r"([?&]token=)[^&\s]+")
+_URL_ARG_INDEX = 2  # uvicorn access log args: (client, method, path with query, http version, status)
+
+
+# Masks ?token= in uvicorn access-log lines: the live stream URL carries a login token that must not be logged
+class RedactTokenFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and len(record.args) > _URL_ARG_INDEX:
+            args = list(record.args)
+            args[_URL_ARG_INDEX] = _TOKEN_IN_URL.sub(r"\1<redacted>", str(args[_URL_ARG_INDEX]))
+            record.args = tuple(args)
+        return True
 
 
 def hash_password(password: str) -> str:

@@ -2,15 +2,24 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# Settings used by both vision and backend
+# Settings used by both vision and backend; connection details and credentials must come from .env
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    redis_url: str = "redis://localhost:6379/0"
-    database_url: str = "postgresql+asyncpg://goeye:goeye@localhost:5432/goeye"
+    redis_url: str
 
     track_stream: str = "tracks"
     event_stream: str = "events"
+
+    cameras: dict[str, str]  # camera id -> RTSP URL without credentials
+    rtsp_user: str
+    rtsp_password: str
+    camera_timeout_seconds: float = 10.0
+    camera_reconnect_seconds: float = 3.0
+
+    stream_fps: float = 10.0          # live view frames per second sent to the dashboard
+    stream_jpeg_quality: int = 80
+    frame_ttl_seconds: float = 5.0    # a camera with no frame for this long shows as offline
 
     yolo_model: str = "yolov8n.pt"
 

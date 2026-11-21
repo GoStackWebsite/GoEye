@@ -1,0 +1,24 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  white-space: nowrap;
+}
+
+.dotOk,
+.dotBad {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.dotOk {
+  background: var(--ok);
+}
+
+.dotBad {
+  background: var(--danger);
+}

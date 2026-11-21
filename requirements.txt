@@ -1,55 +1,39 @@
 # ============================================================
-# goeye - complete requirements
-# Python 3.12 recommended
+# goeye - requirements (Python 3.12)
+# Every package is pinned: versions change only on purpose (RULES.md section 2).
+# Add a package here, pinned, only when the code starts using it.
 # ============================================================
 
 # ---------- Computer vision / AI ----------
-torch                    # PyTorch (the Windows build from PyPI is CPU-only, which suits your Intel laptop)
-torchvision
-ultralytics              # YOLOv8 / YOLO11 detection, pose, and ByteTrack/BoT-SORT tracking
-opencv-python            # video capture and image processing
-numpy
-openvino                 # fast inference on Intel CPU / Iris Xe GPU
-onnx                     # model export format
-onnxruntime              # alternative inference runtime
-supervision              # zones, line-crossing, dwell time, annotations
-shapely                  # polygon math for zones (counter, shelf, exit)
-lap                      # tracker dependency
-scipy                    # used by trackers and analytics
-pillow                   # image handling for snapshots
+# Docker installs the CPU-only build of torch/torchvision first (see Dockerfile); keep these versions in step with it.
+torch==2.15.0
+torchvision==0.29.2
+ultralytics==8.4.216          # YOLO person detection
+opencv-python==5.1.0.95       # camera reading, JPEG encoding
+numpy==2.5.4
+shapely==2.2.0                # zone polygons
 
 # ---------- Messaging between processes ----------
-redis                    # Redis Streams message bus
+redis==8.1.0                  # message bus and latest camera frames
 
-# ---------- Backend API (FastAPI) ----------
-fastapi
-uvicorn[standard]        # ASGI server
-python-multipart         # form/file uploads
-websockets               # live updates to the dashboard
+# ---------- Backend API ----------
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
 
 # ---------- Database ----------
-sqlalchemy[asyncio]      # ORM (asyncio extra pulls in greenlet)
-asyncpg                  # async PostgreSQL driver
-psycopg[binary]          # sync PostgreSQL driver (for Alembic and scripts)
-alembic                  # database migrations
+sqlalchemy[asyncio]==2.1.9
+asyncpg==0.32.0               # async PostgreSQL driver
 
 # ---------- Config / validation ----------
-pydantic
-pydantic-settings        # load settings from a .env file
-python-dotenv
+pydantic==2.14.4
+pydantic-settings==2.16.3     # loads settings from .env
 
 # ---------- Auth / security ----------
-pyjwt                    # JWT tokens
-pwdlib[argon2]           # password hashing
+pyjwt==2.15.1                 # login tokens
+pwdlib[argon2]==0.4.2         # password hashing
 
 # ---------- Utilities ----------
-loguru                   # simpler logging
-apscheduler              # scheduled jobs (cleanup, daily reports)
-pandas                   # reports and analytics
+loguru==0.8.0                 # error logging
 
-# ---------- Development / testing ----------
-pytest
-pytest-asyncio
-httpx                    # test FastAPI endpoints
-ruff                     # linting and formatting
-mypy                     # type checking
+# ---------- Development ----------
+ruff==0.17.6                  # code checker (run with --no-cache)

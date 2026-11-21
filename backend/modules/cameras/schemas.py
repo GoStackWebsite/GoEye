@@ -1,14 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
-# Request body for creating a camera
-class CameraCreate(BaseModel):
+# A configured camera and whether its live frames are arriving
+class CameraOut(BaseModel):
     id: str
-    name: str
-    source: str
-    enabled: bool = True
-
-
-# Camera as returned by the API
-class CameraOut(CameraCreate):
-    model_config = ConfigDict(from_attributes=True)
+    online: bool

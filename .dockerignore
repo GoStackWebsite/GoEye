@@ -1,0 +1,12 @@
+# Secrets: passed to containers at runtime through env_file, never baked into the image
+.env
+web/.env
+
+# Local environments and build output
+.venv
+**/__pycache__
+.ruff_cache
+web/node_modules
+web/.next
+.git
+*.pt

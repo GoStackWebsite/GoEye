@@ -22,11 +22,6 @@ class NotFoundError(AppError):
     status_code = status.HTTP_404_NOT_FOUND
 
 
-# Raised when creating a resource that already exists
-class ConflictError(AppError):
-    status_code = status.HTTP_409_CONFLICT
-
-
 # Raised when credentials or a token are missing or invalid
 class UnauthorizedError(AppError):
     status_code = status.HTTP_401_UNAUTHORIZED

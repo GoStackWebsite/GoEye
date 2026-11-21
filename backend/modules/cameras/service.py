@@ -1,31 +1,45 @@
-"""Business logic for cameras."""
+"""Business logic for cameras: listing with online status and the MJPEG live stream."""
+import time
+from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import Depends
 
-from backend.core.dependencies import DbSession
-from backend.core.exceptions import ConflictError
-from backend.modules.cameras.models import Camera
+from backend.core.config import settings
+from backend.core.exceptions import NotFoundError
 from backend.modules.cameras.repository import CameraRepository
-from backend.modules.cameras.schemas import CameraCreate, CameraOut
+from backend.modules.cameras.schemas import CameraOut
+
+MJPEG_BOUNDARY = "frame"
 
 
-# Lists and registers cameras
+# Lists cameras and turns their latest frames into a browser-viewable MJPEG stream
 class CameraService:
     def __init__(self, repo: CameraRepository) -> None:
         self.repo = repo
 
-    async def list_cameras(self) -> list[CameraOut]:
-        return [CameraOut.model_validate(c) for c in await self.repo.list()]
+    def list_cameras(self) -> list[CameraOut]:
+        return [CameraOut(id=cid, online=self.repo.latest_frame(cid) is not None) for cid in self.repo.ids()]
 
-    async def create_camera(self, data: CameraCreate) -> CameraOut:
-        if await self.repo.get(data.id):
-            raise ConflictError(f"Camera '{data.id}' already exists")
-        return CameraOut.model_validate(await self.repo.add(Camera(**data.model_dump())))
+    def ensure_exists(self, camera_id: str) -> None:
+        if not self.repo.exists(camera_id):
+            raise NotFoundError(f"Camera '{camera_id}' is not configured")
+
+    def mjpeg(self, camera_id: str) -> Iterator[bytes]:
+        """Yield each new frame as one MJPEG part; runs until the client disconnects."""
+        interval = 1.0 / settings.stream_fps
+        last: bytes | None = None
+        while True:
+            frame = self.repo.latest_frame(camera_id)
+            if frame is not None and frame != last:
+                last = frame
+                yield (f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
+                       f"Content-Length: {len(frame)}\r\n\r\n").encode() + frame + b"\r\n"
+            time.sleep(interval)
 
 
-def get_camera_service(db: DbSession) -> CameraService:
-    return CameraService(CameraRepository(db))
+def get_camera_service() -> CameraService:
+    return CameraService(CameraRepository())
 
 
 CameraServiceDep = Annotated[CameraService, Depends(get_camera_service)]

@@ -1,45 +1,70 @@
+# Whole stack: docker compose up -d --build   (dashboard: http://localhost:5173, API: http://localhost:8001)
+x-python-app: &python-app
+  build: .
+  image: goeye-app
+  env_file: .env
+  environment:
+    REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  restart: unless-stopped
+
 services:
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]  # this PC only: Redis has no password
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: goeye
-      POSTGRES_PASSWORD: goeye
-      POSTGRES_DB: goeye
-    ports: ["5432:5432"]
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
 
   vision:
-    build: .
+    <<: *python-app
     command: python -m vision.supervisor
-    environment: &env
-      REDIS_URL: redis://redis:6379/0
-      DATABASE_URL: postgresql+asyncpg://goeye:goeye@postgres:5432/goeye
     depends_on: [redis]
 
   backend:
-    build: .
+    <<: *python-app
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
-    environment: *env
-    ports: ["8000:8000"]
-    depends_on: [redis, postgres]
+    ports: ["8001:8000"]  # host port 8001: camera_tool's camera-engine already uses 8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      retries: 12
+    depends_on:
+      redis: { condition: service_started }
+      postgres: { condition: service_healthy }
 
   event_writer:
-    build: .
+    <<: *python-app
     command: python -m backend.modules.events.consumer
-    environment: *env
-    depends_on: [redis, postgres]
+    depends_on:
+      redis: { condition: service_started }
+      backend: { condition: service_healthy }  # the backend creates the tables
 
   web:
-    image: node:20
+    image: node:22
     working_dir: /web
-    command: sh -c "npm install && npm run dev -- --host"
-    volumes: ["./web:/web"]
+    command: sh -c "npm ci && npm run dev"
+    environment:
+      WATCHPACK_POLLING: "true"  # file changes on a Windows folder are only seen by polling
+    volumes:
+      - ./web:/web
+      - /web/node_modules  # the container's own Linux packages, not the Windows ones
+      - /web/.next
     ports: ["5173:5173"]
     depends_on: [backend]
+    restart: unless-stopped
 
 volumes:
   pgdata:

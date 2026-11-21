@@ -1,4 +1,5 @@
 """FastAPI application entry point."""
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,10 +9,12 @@ from backend.core.config import settings
 from backend.core.database import create_tables, engine
 from backend.core.exceptions import register_exception_handlers
 from backend.core.responses import ApiResponse, ok
+from backend.core.security import RedactTokenFilter
 from backend.modules.auth.router import router as auth_router
 from backend.modules.cameras.router import router as cameras_router
 from backend.modules.events.router import router as events_router
 
+logging.getLogger("uvicorn.access").addFilter(RedactTokenFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

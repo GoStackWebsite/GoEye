@@ -8,8 +8,6 @@ from shared.schemas import EventType
 
 # Handles DB access for events
 class EventRepository(BaseRepository[EventRecord]):
-    model = EventRecord
-
     async def list(
         self, camera_id: str | None, type: EventType | None, limit: int
     ) -> list[EventRecord]:

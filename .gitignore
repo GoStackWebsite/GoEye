@@ -4,3 +4,6 @@ __pycache__/
 .env
 *.pt
 node_modules/
+web/.next/
+web/next-env.d.ts
+web/*.tsbuildinfo

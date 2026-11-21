@@ -3,6 +3,8 @@ from typing import Protocol
 
 import numpy as np
 
+PERSON_CLASS_ID = 0  # "person" in the COCO classes YOLO models are trained on
+
 
 # Interface any detector must implement, so models can be swapped
 class Detector(Protocol):
@@ -17,4 +19,4 @@ class YoloDetector:
         self.model = YOLO(model_path)
 
     def detect(self, frame: np.ndarray):
-        return self.model(frame, classes=[0], verbose=False)[0]  # class 0 = person
+        return self.model(frame, classes=[PERSON_CLASS_ID], verbose=False)[0]
