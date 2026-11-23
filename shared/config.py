@@ -21,7 +21,11 @@ class Settings(BaseSettings):
     stream_jpeg_quality: int = 80
     frame_ttl_seconds: float = 5.0    # a camera with no frame for this long shows as offline
 
-    yolo_model: str = "yolov8n.pt"
+    models_dir: str = "models"        # model files; the vision container mounts ./models here
+    yolo_model: str = "yolo26n.pt"    # person detector; ultralytics downloads it into models_dir on first start
+    detect_conf: float = 0.35         # minimum detection confidence
+    detect_imgsz: int = 640           # inference size (multiple of 32)
+    analysis_fps: float = 5.0         # frames per second per camera run through detection (CPU-bound)
 
 
 settings = Settings()

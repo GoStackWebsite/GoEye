@@ -31,6 +31,7 @@ services:
   vision:
     <<: *python-app
     command: python -m vision.supervisor
+    volumes: ["./models:/app/models"]  # model files stay on this PC (not in git, not in the image)
     depends_on: [redis]
 
   backend:
