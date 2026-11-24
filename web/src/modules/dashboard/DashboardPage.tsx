@@ -7,6 +7,8 @@ import { usePolling } from "../../core/usePolling";
 import { listCameras } from "../cameras/api";
 import { CameraTile } from "../cameras/CameraTile";
 import { RecentEvents } from "../events/RecentEvents";
+import { LineCounts } from "../zones/LineCounts";
+import { ZoneOccupancy } from "../zones/ZoneOccupancy";
 import styles from "./DashboardPage.module.css";
 
 const CAMERA_REFRESH_MS = 5_000;
@@ -36,6 +38,10 @@ export function DashboardPage() {
           {cameras?.map((camera) => <CameraTile key={camera.id} camera={camera} />)}
         </div>
       </Card>
+
+      <ZoneOccupancy />
+
+      <LineCounts />
 
       <RecentEvents />
     </div>

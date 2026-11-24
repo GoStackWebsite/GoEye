@@ -6,10 +6,23 @@
 }
 
 .view {
+  cursor: zoom-in;
   aspect-ratio: 16 / 9;
   display: grid;
   place-items: center;
   background: #000;
+}
+
+/* enlarged: the picture covers the whole window until it is clicked or Esc is pressed */
+.viewLarge {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.94);
+  cursor: zoom-out;
 }
 
 .video {
@@ -28,4 +41,25 @@
   justify-content: space-between;
   padding: 10px 12px;
   font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 400;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:disabled {
+  color: var(--text-muted);
+  cursor: default;
 }

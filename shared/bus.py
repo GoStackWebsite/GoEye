@@ -1,15 +1,22 @@
-"""Redis helpers: Streams for messages, and the latest JPEG frame per camera for the live view."""
+"""Redis helpers: Streams for messages, the latest JPEG frame per camera, each camera's drawn zones, and how many
+people are in each zone right now."""
 from collections.abc import Iterator
 from typing import TypeVar
 
 import redis
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 from shared.config import settings
+from shared.schemas import ZoneShape
 
 M = TypeVar("M", bound=BaseModel)
 
 FRAME_KEY = "frame:{camera_id}"
+ZONES_KEY = "zones:{camera_id}"
+OCCUPANCY_KEY = "occupancy:{camera_id}"
+
+_zone_list = TypeAdapter(list[ZoneShape])
+_occupancy = TypeAdapter(dict[int, int])
 
 _text_client: redis.Redis | None = None
 _binary_client: redis.Redis | None = None
@@ -67,3 +74,26 @@ def publish_frame(camera_id: str, jpeg: bytes) -> None:
 
 def latest_frame(camera_id: str) -> bytes | None:
     return _get_binary_client().get(FRAME_KEY.format(camera_id=camera_id))
+
+
+def publish_zones(camera_id: str, zones: list[ZoneShape]) -> None:
+    """Store a camera's zones and count lines for vision, replacing the previous set."""
+    get_client().set(ZONES_KEY.format(camera_id=camera_id), _zone_list.dump_json(zones).decode())
+
+
+def load_zones(camera_id: str) -> list[ZoneShape]:
+    raw = get_client().get(ZONES_KEY.format(camera_id=camera_id))
+    return _zone_list.validate_json(raw) if raw else []
+
+
+def publish_occupancy(camera_id: str, people: dict[int, int]) -> None:
+    """Store how many people are in each of a camera's zones (zone id -> people); it expires like the frame does,
+    so a stalled camera stops reporting instead of showing an old number."""
+    key = OCCUPANCY_KEY.format(camera_id=camera_id)
+    get_client().set(key, _occupancy.dump_json(people).decode(), px=int(settings.frame_ttl_seconds * 1000))
+
+
+def load_occupancy(camera_id: str) -> dict[int, int] | None:
+    """People per zone id, or None when vision is not reporting for this camera."""
+    raw = get_client().get(OCCUPANCY_KEY.format(camera_id=camera_id))
+    return _occupancy.validate_json(raw) if raw else None
