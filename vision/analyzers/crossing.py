@@ -24,6 +24,8 @@ class LineState:
     side_point: tuple[float, float] | None = None   # where they stood when that side was seen
     pending_side: int = 0                           # opposite side seen while a crossing is being confirmed
     pending_frames: int = 0
+    pending_point: tuple[float, float] | None = None  # where they stood on that opposite side
+    pending_at: float = 0.0
     last_cross: float = float("-inf")
 
 
@@ -86,12 +88,7 @@ class CrossingAnalyzer(Analyzer):
         for line in self.zones.lines:
             direction = self._update_line(person.lines.setdefault(line.id, LineState()), line, foot, update.ts.timestamp())
             if direction is not None:
-                count = self.counts.setdefault(line.id, LineCount())
-                if direction is EventType.LINE_IN:
-                    count.entered += 1
-                else:
-                    count.left += 1
-                events.append(self._event(direction, update.track_id, update.ts, line.name, {"id": line.id}))
+                events.append(self._line_event(direction, line, update.track_id, update.ts))
         for zone in self.zones.zones:
             state = person.zones.setdefault(zone.id, ZoneState())
             if zone.contains(*foot) == state.inside:
@@ -109,16 +106,26 @@ class CrossingAnalyzer(Analyzer):
         return events
 
     def on_track_lost(self, track_id: int, ts: datetime) -> list[Event]:
-        """A person is gone from view: close the zones they were still in."""
+        """A person is gone from view: settle a crossing they had just made and close the zones they were still in."""
         person = self._people.pop(track_id, None)
         if person is None:
             return []
+        events = []
+        # someone who steps over the line and straight through a door is seen on the new side only once:
+        # their last sighting confirms the crossing, since they were never seen back on the old side
+        for line in self.zones.lines:
+            state = person.lines.get(line.id)
+            if state is not None and state.pending_frames:
+                direction = self._settle_crossing(state, line, state.pending_point, state.pending_at)
+                if direction is not None:
+                    events.append(self._line_event(direction, line, track_id, ts))
         names = {zone.id: zone.name for zone in self.zones.zones}
-        return [
+        events += [
             self._zone_exit(track_id, ts, zone_id, names[zone_id], state)
             for zone_id, state in person.zones.items()
             if state.inside and zone_id in names
         ]
+        return events
 
     def occupancy(self) -> dict[int, int]:
         """How many people are in each zone right now (zone id -> people); empty zones are listed with 0."""
@@ -140,7 +147,8 @@ class CrossingAnalyzer(Analyzer):
 
     def _update_line(self, state: LineState, line: CountLine, foot: tuple[float, float], now: float) -> EventType | None:
         """Count a crossing only when the person clearly changes side, stays there for LINE_MIN_FRAMES frames,
-        crossed within the drawn segment, and did not just cross."""
+        crossed within the drawn segment, and did not just cross. A person lost after fewer frames on the new side is
+        settled in on_track_lost."""
         distance = signed_distance(line, *foot)
         if abs(distance) < LINE_MARGIN * self.zones.frame_height:
             return None
@@ -152,8 +160,15 @@ class CrossingAnalyzer(Analyzer):
         if state.pending_side != side:
             state.pending_side, state.pending_frames = side, 0
         state.pending_frames += 1
+        state.pending_point, state.pending_at = foot, now
         if state.pending_frames < LINE_MIN_FRAMES:
             return None
+        return self._settle_crossing(state, line, foot, now)
+
+    @staticmethod
+    def _settle_crossing(state: LineState, line: CountLine, foot: tuple[float, float], now: float) -> EventType | None:
+        """The person is now on pending_side: count it if they crossed the drawn segment and did not just cross."""
+        side = state.pending_side
         counted = (
             crosses_within_segment(line, state.side_point or foot, foot)
             and now - state.last_cross >= LINE_COOLDOWN_SECONDS
@@ -164,6 +179,14 @@ class CrossingAnalyzer(Analyzer):
             return None
         state.last_cross = now
         return EventType.LINE_IN if side == line.in_side else EventType.LINE_OUT
+
+    def _line_event(self, direction: EventType, line: CountLine, track_id: int, ts: datetime) -> Event:
+        count = self.counts.setdefault(line.id, LineCount())
+        if direction is EventType.LINE_IN:
+            count.entered += 1
+        else:
+            count.left += 1
+        return self._event(direction, track_id, ts, line.name, {"id": line.id})
 
     def _zone_exit(self, track_id: int, ts: datetime, zone_id: int, zone_name: str, state: ZoneState) -> Event:
         state.inside = False
