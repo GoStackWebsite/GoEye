@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     detect_conf: float = 0.35         # minimum detection confidence
     detect_imgsz: int = 640           # inference size (multiple of 32)
     analysis_fps: float = 5.0         # frames per second per camera run through detection (CPU-bound)
+    staff_model: str = "staff_cls.pt"  # staff-uniform classifier in models_dir (trained in camera_tool, copied here)
+    staff_threshold: float = 0.5      # a person is staff when the classifier's staff probability is at least this
 
 
 settings = Settings()

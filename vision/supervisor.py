@@ -15,6 +15,7 @@ from shared.schemas import BBox, TrackUpdate
 from vision.analyzers.crossing import CrossingAnalyzer, LineCount
 from vision.worker.capture import CameraStream
 from vision.worker.detector import PersonDetector
+from vision.worker.person_classifier import PersonClassifier
 from vision.worker.tracker import PeopleTracker, Track
 from vision.zones import CameraZones
 
@@ -65,8 +66,8 @@ def draw_tracks(frame: np.ndarray, tracks: list[Track]) -> None:
         cv2.putText(frame, f"#{t.id}", (x1, max(14, y1 - 6)), LABEL_FONT, LABEL_SCALE, BOX_COLOUR, 1, cv2.LINE_AA)
 
 
-def run_camera(stream: CameraStream, detector: PersonDetector) -> None:
-    """Detect, track and count people on one camera at analysis_fps, forever."""
+def run_camera(stream: CameraStream, detector: PersonDetector, classifier: PersonClassifier) -> None:
+    """Detect, track, classify and count people on one camera at analysis_fps, forever."""
     people = PeopleTracker()
     zones = CameraZones(stream.camera_id)
     crossing = CrossingAnalyzer(stream.camera_id, zones)
@@ -90,7 +91,8 @@ def run_camera(stream: CameraStream, detector: PersonDetector) -> None:
                 if t.last_seen == now:  # detected in this frame; a person kept for a moment after being lost has an old box
                     x1, y1, x2, y2 = t.bbox
                     update = TrackUpdate(camera_id=stream.camera_id, track_id=t.id, ts=ts,
-                                         bbox=BBox(x1=x1, y1=y1, x2=x2, y2=y2), confidence=t.conf)
+                                         bbox=BBox(x1=x1, y1=y1, x2=x2, y2=y2), confidence=t.conf,
+                                         role=classifier.classify(frame, t.bbox))
                     events += crossing.on_track_update(update)
             still_in_view = {t.id for t in tracks}
             for track_id in in_view - still_in_view:
@@ -112,18 +114,20 @@ def run_camera(stream: CameraStream, detector: PersonDetector) -> None:
 def main() -> None:
     failed = threading.Event()
 
-    def guarded(stream: CameraStream, detector: PersonDetector) -> None:
+    def guarded(stream: CameraStream, detector: PersonDetector, classifier: PersonClassifier) -> None:
         try:
-            run_camera(stream, detector)
+            run_camera(stream, detector, classifier)
         except Exception:
             log.exception("Camera %s worker failed", stream.camera_id)
             failed.set()
 
     # detectors are created one after another: the first one downloads the model file, the rest reuse it
-    workers = [(CameraStream(camera_id, url), PersonDetector()) for camera_id, url in settings.cameras.items()]
-    for stream, detector in workers:
+    workers = [(CameraStream(camera_id, url), PersonDetector(), PersonClassifier())
+               for camera_id, url in settings.cameras.items()]
+    for stream, detector, classifier in workers:
         stream.start()
-        threading.Thread(target=guarded, args=(stream, detector), name=f"worker-{stream.camera_id}", daemon=True).start()
+        threading.Thread(target=guarded, args=(stream, detector, classifier), name=f"worker-{stream.camera_id}",
+                         daemon=True).start()
     failed.wait()
     raise SystemExit(1)  # Docker restarts the vision container
 
