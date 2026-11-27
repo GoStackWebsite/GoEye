@@ -1,8 +1,8 @@
 # ByteTrack settings tuned for a fixed surveillance camera.
 tracker_type: bytetrack
-track_high_thresh: 0.3    # first-pass association threshold; the nano detector scores seated, half-hidden people 0.35-0.55
-track_low_thresh: 0.1     # second-pass (low-confidence) threshold
-new_track_thresh: 0.35    # confidence needed to start a new track; at 0.6 those people never got an id and were not counted
+track_high_thresh: 0.45   # first-pass association threshold
+track_low_thresh: 0.1     # second-pass (low-confidence) threshold, same as DETECT_CONF: keeps known people through score dips
+new_track_thresh: 0.5     # confidence needed to start a new track; yolo26m scores seated, half-hidden people 0.50-0.65, so 0.6 would never give them an id
 track_buffer: 60          # frames to keep a lost track alive (~4s at 15 fps)
 match_thresh: 0.8         # IoU matching threshold
 fuse_score: true

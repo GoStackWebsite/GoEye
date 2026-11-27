@@ -22,8 +22,13 @@ class Settings(BaseSettings):
     frame_ttl_seconds: float = 5.0    # a camera with no frame for this long shows as offline
 
     models_dir: str = "models"        # model files; the vision container mounts ./models here
-    yolo_model: str = "yolo26n.pt"    # person detector; ultralytics downloads it into models_dir on first start
-    detect_conf: float = 0.35         # minimum detection confidence
+    # person detector; ultralytics downloads it into models_dir on first start. The large model: on the office cameras
+    # nano and medium both took a chair back and a hanging decoration for people, large found the same people without
+    # them (2026-11-27)
+    yolo_model: str = "yolo26l.pt"
+    # lowest detection score handed to the tracker, equal to its track_low_thresh: low-score boxes only keep people it
+    # already follows (a seated person dipping below 0.45 flickered in and out); a new person still needs new_track_thresh
+    detect_conf: float = 0.1
     detect_imgsz: int = 640           # inference size (multiple of 32)
     analysis_fps: float = 5.0         # frames per second per camera run through detection (CPU-bound)
     staff_model: str = "staff_cls.pt"  # staff-uniform classifier in models_dir (trained in camera_tool, copied here)

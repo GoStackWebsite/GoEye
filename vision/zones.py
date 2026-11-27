@@ -29,7 +29,8 @@ class FloorZone:
     outline: np.ndarray  # the corners as integer pixels, for drawing
 
     def contains(self, x: float, y: float) -> bool:
-        return self.polygon.contains(Point(x, y))
+        # covers, not contains: a person cut off by the bottom of the picture has their feet exactly on a zone edge drawn there
+        return self.polygon.covers(Point(x, y))
 
 
 # Loads a camera's shapes from the bus and scales them to its frame size; version changes whenever they do
